@@ -1,0 +1,19 @@
+{
+  "task": "four-class classification",
+  "target": "final_result",
+  "best_model": "DecisionTree",
+  "models": {
+    "LogisticRegression": {
+      "weighted_f1": 0.5447597494000639,
+      "accuracy": 0.596175122490912
+    },
+    "DecisionTree": {
+      "weighted_f1": 0.5624797129363831,
+      "accuracy": 0.5881144302196933
+    },
+    "RandomForest": {
+      "weighted_f1": 0.5535384517015375,
+      "accuracy": 0.5990200727042833
+    }
+  }
+}
