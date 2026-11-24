@@ -39,6 +39,7 @@ class Assessment(Base):
     obtained: Mapped[float] = mapped_column(Float)
     maximum: Mapped[float] = mapped_column(Float)
     assessment_date: Mapped[date] = mapped_column(Date)
+    topics: Mapped[str] = mapped_column(Text, default="")
     subject: Mapped[Subject] = relationship(back_populates="assessments")
 
 class Feedback(Base):
