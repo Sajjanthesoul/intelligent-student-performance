@@ -26,7 +26,7 @@ def test_grade_boundaries():
 
 def test_analysis_is_weighted_and_risk_explained():
     subject_a = SimpleNamespace(name="Mathematics", teacher_name="Teacher A", assessments=[
-        SimpleNamespace(id=1, assessment_date=date(2026, 1, 1), obtained=20, maximum=40),
+        SimpleNamespace(id=1, assessment_date=date(2026, 1, 1), obtained=20, maximum=40, topics="Algebra, Functions"),
         SimpleNamespace(id=2, assessment_date=date(2026, 2, 1), obtained=30, maximum=60),
     ])
     subject_b = SimpleNamespace(name="Science", teacher_name="Teacher B", assessments=[
@@ -37,6 +37,7 @@ def test_analysis_is_weighted_and_risk_explained():
     assert result["subjects"][1]["risk"] == "High"
     assert "40.0%" in result["subjects"][1]["reason"]
     assert result["subjects"][0]["trend"] == 0.0
+    assert result["subjects"][0]["topics"] == ["Algebra", "Functions"]
     assert result["weaknesses"] == ["Science", "Mathematics"] or set(result["weaknesses"]) == {"Science", "Mathematics"}
     assert suggested_actions(result["subjects"][0])
     assert suggested_target(result["subjects"][0]) == 65.0
