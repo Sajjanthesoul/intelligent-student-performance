@@ -30,3 +30,16 @@ The application normalizes PostgreSQL URLs for psycopg 3. Table initialization u
 ## Tests
 
 Run `pytest -q` to exercise mark validation, grade boundaries, weighted analysis, risk explanations and database persistence/cascade deletion. Use anonymized test fixtures only.
+
+
+## Machine-learning early-warning module
+
+The **Early-warning ML** tab is separate from the OULAD research dashboard and from the marks-based grade calculator.
+
+- It automatically derives features from recorded assessments: weighted pre-final average, latest and recent scores, trend, score variability, low-mark count, subject count, and share of weak subjects.
+- Final-exam assessment rows are excluded from both training features and current-student predictions.
+- Teachers record the verified final result (Pass, Distinction, Fail, Withdrawn) for completed historical students. Fail/Withdrawn form the at-risk class; Pass/Distinction form the other class.
+- The model compares Logistic Regression and Random Forest using a stratified holdout and reports accuracy, balanced accuracy, precision, recall, F1 and ROC-AUC where calculable.
+- It requires at least 30 labelled students and at least five examples in each class. Until then, it explicitly reports insufficient evidence and does not produce an ML prediction. Never substitute synthetic data or the OULAD model's outputs for institution-specific labels.
+- Current students with at least two non-final assessments receive a risk band, a non-calibrated model score, descriptive mark signals and a suggested teacher action.
+- Risk scores are not calibrated probabilities, guarantees, causal explanations or automatic decisions. Validate the model on local cohorts, monitor class imbalance and fairness, and use teacher judgment.
