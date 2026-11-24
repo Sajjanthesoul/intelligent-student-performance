@@ -66,7 +66,7 @@ def test_database_persistence_and_cascade_delete(tmp_path):
 def test_pdf_report_is_generated():
     from assessment.reports import build_student_pdf
     subject = SimpleNamespace(name="Mathematics", teacher_name="Teacher", assessments=[
-        SimpleNamespace(id=1, assessment_date=date(2026, 3, 1), obtained=72, maximum=100, assessment_type="Midterm")
+        SimpleNamespace(id=1, assessment_date=date(2026, 3, 1), obtained=72, maximum=100, assessment_type="Midterm", topics="Algebra, Functions")
     ], feedback=[],)
     student = SimpleNamespace(name="Sample & Learner", student_id="SAMPLE-02", course="Computing", semester="2", academic_details="Anonymized fixture", subjects=[subject], goals=[])
     payload = build_student_pdf(student)
