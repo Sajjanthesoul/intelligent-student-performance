@@ -1,0 +1,22 @@
+name: Assessment module tests
+on:
+  push:
+    branches: [conference-upgrade]
+    paths:
+      - "assessment/**"
+      - "tests/**"
+      - ".github/workflows/assessment-tests.yml"
+  pull_request:
+    branches: [conference-upgrade]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --upgrade pip
+      - run: pip install "SQLAlchemy>=2.0,<3.0" "reportlab>=4.2,<5.0" "pytest>=8,<10"
+      - run: pytest -q
