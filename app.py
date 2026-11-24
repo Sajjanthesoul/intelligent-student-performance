@@ -214,7 +214,7 @@ with st.sidebar:
     st.markdown('<div class="mini-label">WORKSPACE</div>', unsafe_allow_html=True)
     page = st.radio(
         "Navigation",
-        ["Overview", "Predictions", "Model performance", "About project"],
+        ["Overview", "Predictions", "Model performance", "Individual assessment", "About project"],
         label_visibility="collapsed",
     )
     st.markdown("---")
@@ -237,6 +237,7 @@ page_meta = {
     "Overview": ("OVERVIEW", "Student performance at a glance"),
     "Predictions": ("PREDICTION EXPLORER", "Explore model predictions and outcomes"),
     "Model performance": ("MODEL ANALYTICS", "Compare machine-learning model performance"),
+    "Individual assessment": ("STUDENT ASSESSMENT", "Manage individual student records, marks and support plans"),
     "About project": ("PROJECT INFORMATION", "Methodology, scope and responsible use"),
 }
 eyebrow, subtitle = page_meta[page]
@@ -463,7 +464,7 @@ elif page == "Model performance":
 # ------------------------------------------------------------
 # About page
 # ------------------------------------------------------------
-else:
+elif page == "About project":
     section("Project overview", "An academic prototype for analysing student performance using the Open University Learning Analytics Dataset.")
     st.markdown(
         """
@@ -495,3 +496,11 @@ else:
         """)
     st.warning("This dashboard is a research decision-support prototype. It should not be used to label, penalize or make consequential decisions about individual students.")
     st.caption("Built with Python, PySpark, Streamlit, pandas and Plotly.")
+
+
+# ------------------------------------------------------------
+# Individual student assessment module
+# ------------------------------------------------------------
+else:
+    from assessment.ui import render_assessment
+    render_assessment()
