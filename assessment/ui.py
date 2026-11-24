@@ -75,6 +75,17 @@ def render_assessment():
                 with st.expander(f"{sub.name} · {sub.teacher_name or 'Teacher not assigned'}"):
                     for mark in sorted(sub.assessments,key=lambda x:x.assessment_date,reverse=True):
                         c1,c2,c3=st.columns([2,2,1]); c1.write(f"{mark.assessment_type} · {mark.assessment_date}"); c2.write(f"{mark.obtained:g}/{mark.maximum:g} ({mark.obtained/mark.maximum*100:.1f}%)")
+                        with st.form(f"edit_mark_{mark.id}"):
+                            new_type=st.text_input("Assessment type",mark.assessment_type,key=f"type_{mark.id}")
+                            x,y,z=st.columns(3)
+                            new_obtained=x.number_input("Obtained",min_value=0.0,value=float(mark.obtained),key=f"obt_{mark.id}")
+                            new_maximum=y.number_input("Maximum",min_value=0.01,value=float(mark.maximum),key=f"max_{mark.id}")
+                            new_date=z.date_input("Date",value=mark.assessment_date,key=f"date_{mark.id}")
+                            update_mark=st.form_submit_button("Update marks")
+                            if update_mark:
+                                try:
+                                    mark.obtained,mark.maximum=validate_marks(new_obtained,new_maximum); mark.assessment_type=new_type.strip() or "Assessment"; mark.assessment_date=new_date; db.commit(); st.success("Marks updated."); st.rerun()
+                                except ValueError as e: db.rollback(); st.error(str(e))
                         if c3.button("Delete",key=f"del_mark_{mark.id}"): db.delete(mark); db.commit(); st.rerun()
                     with st.form(f"edit_subject_{sub.id}"):
                         new_teacher=st.text_input("Assigned teacher",sub.teacher_name); rename=st.text_input("Subject name",sub.name); save=st.form_submit_button("Update subject")
