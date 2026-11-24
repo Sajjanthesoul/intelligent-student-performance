@@ -75,7 +75,7 @@ def render_assessment():
             student = st.selectbox("Student",students,format_func=lambda s:f"{s.name} · {s.student_id}",key="marks_student")
             st.subheader("Add a subject and assessment")
             with st.form("add_mark",clear_on_submit=True):
-                subject_name=st.text_input("Subject name"); teacher=st.text_input("Assigned teacher"); kind=st.selectbox("Assessment type",["Quiz","Assignment","Midterm","Final exam","Project","Practical","Other"]); a,b=st.columns(2); obtained=a.number_input("Obtained marks",min_value=0.0,value=0.0,step=1.0); maximum=b.number_input("Maximum marks",min_value=0.01,value=100.0,step=1.0); dt=st.date_input("Assessment date",value=date.today()); add=st.form_submit_button("Save marks",type="primary")
+                subject_name=st.text_input("Subject name"); teacher=st.text_input("Assigned teacher"); kind=st.selectbox("Assessment type",["Quiz","Assignment","Midterm","Final exam","Project","Practical","Other"]); a,b=st.columns(2); obtained=a.number_input("Obtained marks",min_value=0.0,value=0.0,step=1.0); maximum=b.number_input("Maximum marks",min_value=0.01,value=100.0,step=1.0); dt=st.date_input("Assessment date",value=date.today()); topics=st.text_input("Topics covered / requiring attention (optional)"); add=st.form_submit_button("Save marks",type="primary")
                 if add:
                     try:
                         obtained,maximum=validate_marks(obtained,maximum)
@@ -84,7 +84,7 @@ def render_assessment():
                             if not subject_name.strip(): raise ValueError("Subject name is required.")
                             subject=Subject(student_id=student.id,name=subject_name.strip(),teacher_name=teacher.strip()); db.add(subject); db.flush()
                         elif teacher.strip(): subject.teacher_name=teacher.strip()
-                        db.add(Assessment(subject_id=subject.id,assessment_type=kind,obtained=obtained,maximum=maximum,assessment_date=dt)); db.commit(); st.success(f"Marks saved ({obtained/maximum*100:.1f}%)."); st.rerun()
+                        db.add(Assessment(subject_id=subject.id,assessment_type=kind,obtained=obtained,maximum=maximum,assessment_date=dt,topics=topics.strip())); db.commit(); st.success(f"Marks saved ({obtained/maximum*100:.1f}%)."); st.rerun()
                     except ValueError as e: db.rollback(); st.error(str(e))
             subjects=db.scalars(select(Subject).where(Subject.student_id==student.id).order_by(Subject.name)).all()
             for sub in subjects:
@@ -97,10 +97,11 @@ def render_assessment():
                             new_obtained=x.number_input("Obtained",min_value=0.0,value=float(mark.obtained),key=f"obt_{mark.id}")
                             new_maximum=y.number_input("Maximum",min_value=0.01,value=float(mark.maximum),key=f"max_{mark.id}")
                             new_date=z.date_input("Date",value=mark.assessment_date,key=f"date_{mark.id}")
+                            new_topics=st.text_input("Topic focus",getattr(mark,"topics",""),key=f"topics_{mark.id}")
                             update_mark=st.form_submit_button("Update marks")
                             if update_mark:
                                 try:
-                                    mark.obtained,mark.maximum=validate_marks(new_obtained,new_maximum); mark.assessment_type=new_type.strip() or "Assessment"; mark.assessment_date=new_date; db.commit(); st.success("Marks updated."); st.rerun()
+                                    mark.obtained,mark.maximum=validate_marks(new_obtained,new_maximum); mark.assessment_type=new_type.strip() or "Assessment"; mark.assessment_date=new_date; mark.topics=new_topics.strip(); db.commit(); st.success("Marks updated."); st.rerun()
                                 except ValueError as e: db.rollback(); st.error(str(e))
                         if c3.button("Delete",key=f"del_mark_{mark.id}"): db.delete(mark); db.commit(); st.rerun()
                     with st.form(f"edit_subject_{sub.id}"):
@@ -132,6 +133,7 @@ def render_assessment():
                 for r in result["subjects"]:
                     if r["risk"]!="Low":
                         st.warning(f"{r['subject']} · {r['risk']} monitoring: {r['reason']}")
+                        if r["topics"]: st.write("Topics to prioritize: " + ", ".join(r["topics"]))
                         st.write(f"Suggested next-assessment target: **{suggested_target(r):.1f}%**")
                         st.write("Suggested actions: " + " · ".join(suggested_actions(r)))
                 if result["strengths"]: st.success("Current strengths: " + ", ".join(result["strengths"]))
