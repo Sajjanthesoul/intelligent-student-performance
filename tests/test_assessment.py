@@ -68,7 +68,7 @@ def test_pdf_report_is_generated():
     subject = SimpleNamespace(name="Mathematics", teacher_name="Teacher", assessments=[
         SimpleNamespace(id=1, assessment_date=date(2026, 3, 1), obtained=72, maximum=100, assessment_type="Midterm")
     ], feedback=[],)
-    student = SimpleNamespace(name="Sample Learner", student_id="SAMPLE-02", course="Computing", semester="2", academic_details="Anonymized fixture", subjects=[subject], goals=[])
+    student = SimpleNamespace(name="Sample & Learner", student_id="SAMPLE-02", course="Computing", semester="2", academic_details="Anonymized fixture", subjects=[subject], goals=[])
     payload = build_student_pdf(student)
     assert payload.startswith(b"%PDF")
     assert len(payload) > 500
