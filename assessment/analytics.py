@@ -12,6 +12,7 @@ def analyze_student(student):
     rows, total_obtained, total_maximum = [], 0.0, 0.0
     for subject in student.subjects:
         marks = sorted(subject.assessments, key=lambda x: (x.assessment_date, x.id))
+        topics = sorted({topic.strip() for mark in marks for topic in getattr(mark, "topics", "").split(",") if topic.strip()})
         obtained = sum(m.obtained for m in marks)
         maximum = sum(m.maximum for m in marks)
         if maximum <= 0: continue
@@ -25,7 +26,7 @@ def analyze_student(student):
         if pct < 50: level, reason = "High", f"Current average is {pct:.1f}%, below the 50% support threshold."
         elif pct < 65: level, reason = "Moderate", f"Current average is {pct:.1f}%, below the 65% monitoring threshold."
         else: level, reason = "Low", f"Current average is {pct:.1f}%, at or above the monitoring threshold."
-        rows.append({"subject": subject.name, "teacher": subject.teacher_name, "assessments": len(marks), "obtained": obtained, "maximum": maximum, "percentage": round(pct, 1), "grade": grade_for(pct), "risk": level, "reason": reason, "trend": trend, "marks": marks})
+        rows.append({"subject": subject.name, "teacher": subject.teacher_name, "assessments": len(marks), "obtained": obtained, "maximum": maximum, "percentage": round(pct, 1), "grade": grade_for(pct), "risk": level, "reason": reason, "trend": trend, "topics": topics, "marks": marks})
     overall = (total_obtained / total_maximum * 100) if total_maximum else None
     ranked = sorted(rows, key=lambda r: r["percentage"])
     return {"subjects": rows, "overall": round(overall, 1) if overall is not None else None,
