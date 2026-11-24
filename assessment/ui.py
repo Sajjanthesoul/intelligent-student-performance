@@ -5,10 +5,11 @@ import plotly.express as px
 import streamlit as st
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from .db import init_db, SessionLocal, Student, Subject, Assessment, Feedback, Goal, IS_PERSISTENT, validate_marks
+from .db import init_db, SessionLocal, Student, Subject, Assessment, Feedback, Goal, PredictionOutcome, IS_PERSISTENT, validate_marks
 from .analytics import analyze_student, suggested_actions, suggested_target
 from .reports import build_student_pdf
 from .security import configured_password, password_matches
+from .prediction import extract_student_features, train_early_warning_model, predict_student
 
 
 def render_assessment():
@@ -34,7 +35,7 @@ def render_assessment():
         st.warning("Local SQLite storage is active. On Streamlit Community Cloud, local files may be reset when the app restarts. Configure DATABASE_URL with a managed PostgreSQL database for durable hosted records.")
     with SessionLocal() as db:
         students = db.scalars(select(Student).order_by(Student.name)).all()
-        tabs = st.tabs(["Students", "Subjects & marks", "Teachers & feedback", "Performance & goals", "Student report"])
+        tabs = st.tabs(["Students", "Subjects & marks", "Teachers & feedback", "Performance & goals", "Student report", "Early-warning ML"])
         with tabs[0]:
             st.subheader("Register a student")
             with st.form("new_student", clear_on_submit=True):
@@ -174,4 +175,89 @@ def render_assessment():
             st.metric("Overall weighted performance",f"{result['overall']:.1f}%" if result["overall"] is not None else "Not enough marks")
             st.dataframe(pd.DataFrame([{ "Subject":r["subject"],"Marks":f"{r['obtained']:.1f}/{r['maximum']:.1f}","Percentage":r["percentage"],"Grade":r["grade"],"Risk":r["risk"]} for r in result["subjects"]]),use_container_width=True,hide_index=True)
             st.download_button("Download individual student PDF",data=build_student_pdf(student),file_name=f"StudentIQ_{student.student_id}_report.pdf",mime="application/pdf",type="primary")
+
             st.caption("PDF includes recorded marks, grades, strengths, weaknesses, monitoring alerts, teacher feedback and improvement goals.")
+        with tabs[5]:
+            st.subheader("Machine-learning early warning")
+            st.caption("The model learns from completed students' historical outcomes and their recorded pre-final assessment marks. Current students' marks are read automatically; final-exam marks are excluded.")
+            st.info("To train responsibly, record the actual final outcome only after a course is completed. These historical labels are used for training; they are not used as prediction inputs.")
+            with st.form("record_completed_outcome"):
+                outcome_student = st.selectbox(
+                    "Completed student", students,
+                    format_func=lambda s: f"{s.name} · {s.student_id}",
+                    key="ml_outcome_student"
+                )
+                outcome_value = st.selectbox(
+                    "Verified final course outcome",
+                    ["Pass", "Distinction", "Fail", "Withdrawn"],
+                    key="ml_outcome_value"
+                )
+                save_outcome = st.form_submit_button("Save historical outcome")
+                if save_outcome:
+                    stored = db.scalar(select(PredictionOutcome).where(
+                        PredictionOutcome.student_id == outcome_student.id
+                    ))
+                    if stored:
+                        stored.final_result = outcome_value
+                    else:
+                        db.add(PredictionOutcome(
+                            student_id=outcome_student.id,
+                            final_result=outcome_value
+                        ))
+                    db.commit()
+                    st.success("Completed outcome saved for model training.")
+                    st.rerun()
+
+            labelled_rows, current_students = [], []
+            for learner in students:
+                features = extract_student_features(learner)
+                if features is None:
+                    continue
+                outcome = db.scalar(select(PredictionOutcome).where(
+                    PredictionOutcome.student_id == learner.id
+                ))
+                if outcome:
+                    labelled_rows.append({"features": features, "outcome": outcome.final_result})
+                else:
+                    current_students.append((learner, features))
+
+            model_result = train_early_warning_model(labelled_rows)
+            st.subheader("Training readiness")
+            left, middle, right = st.columns(3)
+            left.metric("Completed labelled students", model_result["labelled_students"])
+            middle.metric("At-risk examples", model_result["class_counts"]["at_risk"])
+            right.metric("Other outcomes", model_result["class_counts"]["not_at_risk"])
+            if not model_result["ready"]:
+                st.warning(model_result["message"])
+                st.caption("This is intentional: StudentIQ will not invent predictions or train on synthetic records. Continue recording real completed outcomes as cohorts finish.")
+            else:
+                st.success(f"Model ready · Selected: {model_result['model_name']}")
+                st.caption("Metrics below are measured on a stratified holdout of historical students, before refitting the selected model on all labelled records.")
+                metrics_frame = pd.DataFrame.from_dict(
+                    model_result["metrics"], orient="index"
+                ).rename_axis("Model").reset_index()
+                st.dataframe(metrics_frame, use_container_width=True, hide_index=True)
+                st.caption("Risk score is the classifier's estimated score, not a calibrated probability or a guarantee. High ≥ 65%, Moderate 35–64.9%, Low < 35%.")
+                prediction_rows = []
+                for learner, features in current_students:
+                    result = predict_student(model_result["model"], features)
+                    prediction_rows.append({
+                        "Student": learner.name,
+                        "Student ID": learner.student_id,
+                        "Risk": result["risk_band"],
+                        "Risk score": round(result["risk_score"] * 100, 1),
+                        "Pre-final average": round(features["overall_pct"], 1),
+                        "Trend": round(features["trend_pct"], 1),
+                        "Signals": " ".join(result["signals"]),
+                        "Recommended action": result["recommended_action"],
+                    })
+                if prediction_rows:
+                    prediction_frame = pd.DataFrame(prediction_rows).sort_values(
+                        "Risk score", ascending=False
+                    )
+                    st.subheader("Students who may need early support")
+                    st.dataframe(prediction_frame, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No current students have at least two recorded non-final assessments without a completed outcome.")
+            st.caption("Training target: Fail/Withdrawn = at-risk; Pass/Distinction = not-at-risk. Features are derived from marks already entered. Final-exam marks are excluded. Model outputs support teacher judgment and must never be used as the sole basis for academic decisions.")
+
