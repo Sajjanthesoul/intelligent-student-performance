@@ -64,6 +64,18 @@ class Goal(Base):
     student: Mapped[Student] = relationship(back_populates="goals")
 
 
+class PredictionOutcome(Base):
+    """Historical completed-course outcome used only as an ML training label."""
+    __tablename__ = "assessment_prediction_outcomes"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    student_id: Mapped[int] = mapped_column(
+        ForeignKey("assessment_students.id", ondelete="CASCADE"),
+        unique=True, index=True
+    )
+    final_result: Mapped[str] = mapped_column(String(40))
+    recorded_at: Mapped[date] = mapped_column(Date, default=date.today)
+
+
 def database_url():
     value = os.getenv("DATABASE_URL", "").strip()
     if not value:
