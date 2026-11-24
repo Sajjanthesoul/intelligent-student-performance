@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from assessment.db import Base, Student, Subject, Assessment, validate_marks
+from assessment.db import Base, Student, Subject, Assessment, Feedback, validate_marks
 from assessment.analytics import analyze_student, grade_for, suggested_actions, suggested_target
 from assessment.security import password_matches
 
@@ -61,6 +61,35 @@ def test_database_persistence_and_cascade_delete(tmp_path):
         assert stored.subjects[0].assessments[0].obtained == 8
         session.delete(stored); session.commit()
         assert session.scalar(select(Student).where(Student.id == student_id)) is None
+    engine.dispose()
+
+
+
+def test_feedback_can_be_loaded_by_subject_id_after_subject_is_detached(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'feedback-test.db'}")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine, expire_on_commit=False)
+    with Session() as session:
+        student = Student(student_id="FEEDBACK-001", name="Feedback Student")
+        session.add(student); session.flush()
+        subject = Subject(student_id=student.id, name="Mathematics")
+        session.add(subject); session.flush()
+        session.add_all([
+            Feedback(subject_id=subject.id, teacher_name="Teacher", comment="Earlier feedback", feedback_date=date(2026, 1, 1)),
+            Feedback(subject_id=subject.id, teacher_name="Teacher", comment="Latest feedback", feedback_date=date(2026, 2, 1)),
+        ])
+        session.commit()
+        subject_id = subject.id
+
+    # Simulate a Streamlit selection object retained beyond its original session.
+    assert subject not in session
+    with Session() as session:
+        feedback_rows = session.scalars(
+            select(Feedback)
+            .where(Feedback.subject_id == subject_id)
+            .order_by(Feedback.feedback_date.desc(), Feedback.id.desc())
+        ).all()
+        assert [row.comment for row in feedback_rows] == ["Latest feedback", "Earlier feedback"]
     engine.dispose()
 
 
