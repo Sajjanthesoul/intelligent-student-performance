@@ -34,6 +34,10 @@ def analyze_student(student):
             "weaknesses": [r["subject"] for r in ranked[:2] if r["percentage"] < 65],
             "alerts": [r for r in rows if r["risk"] != "Low"]}
 
+def suggested_target(subject_row):
+    """A transparent next-assessment target: at least 65%, or +5 points."""
+    return round(min(100.0, max(65.0, subject_row["percentage"] + 5.0)), 1)
+
 def suggested_actions(subject_row):
     p = subject_row["percentage"]
     if p < 50:
