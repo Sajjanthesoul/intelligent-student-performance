@@ -56,7 +56,8 @@ def render_assessment():
                 query = st.text_input("Search by name, ID or course", key="student_search").lower()
                 visible = [s for s in students if query in f"{s.name} {s.student_id} {s.course}".lower()]
                 st.dataframe(pd.DataFrame([{"Name":s.name,"Student ID":s.student_id,"Course":s.course,"Semester":s.semester} for s in visible]),use_container_width=True,hide_index=True)
-                selected = st.selectbox("Select student to edit or delete", students, format_func=lambda s:f"{s.name} · {s.student_id}", key="student_manage")
+                selected_option = st.selectbox("Select student to edit or delete", students, format_func=lambda s:f"{s.name} · {s.student_id}", key="student_manage")
+                selected = db.get(Student, selected_option.id)
                 with st.form("edit_student"):
                     n = st.text_input("Name",selected.name); c = st.text_input("Course",selected.course); sem = st.text_input("Semester",selected.semester); d = st.text_area("Academic details",selected.academic_details)
                     save = st.form_submit_button("Save student changes")
@@ -112,7 +113,9 @@ def render_assessment():
             student=st.selectbox("Student",students,format_func=lambda s:f"{s.name} · {s.student_id}",key="feedback_student")
             subjects=db.scalars(select(Subject).where(Subject.student_id==student.id).order_by(Subject.name)).all()
             if subjects:
-                sub=st.selectbox("Subject",subjects,format_func=lambda s:s.name,key="feedback_subject")
+                selected_subject = st.selectbox("Subject",subjects,format_func=lambda s:s.name,key="feedback_subject")
+                # Re-attach the selected row to this render's active Session.
+                sub = db.get(Subject, selected_subject.id)
                 with st.form("teacher_feedback"):
                     teacher=st.text_input("Teacher name",sub.teacher_name); when=st.date_input("Feedback date",date.today()); comment=st.text_area("Feedback / comments"); save=st.form_submit_button("Save teacher feedback")
                     if save:
@@ -132,7 +135,8 @@ def render_assessment():
                         db.delete(f); db.commit(); st.rerun()
             else: st.info("Add a subject before recording teacher feedback.")
         with tabs[3]:
-            student=st.selectbox("Student",students,format_func=lambda s:f"{s.name} · {s.student_id}",key="analysis_student")
+            selected_student=st.selectbox("Student",students,format_func=lambda s:f"{s.name} · {s.student_id}",key="analysis_student")
+            student=db.get(Student, selected_student.id)
             result=analyze_student(student)
             a,b,c=st.columns(3); a.metric("Overall weighted result",f"{result['overall']:.1f}%" if result["overall"] is not None else "N/A"); b.metric("Overall grade",result["grade"]); c.metric("Subjects monitored",len(result["subjects"]))
             if result["subjects"]:
@@ -162,7 +166,8 @@ def render_assessment():
                     if st.button("Update goal progress",key=f"save_goal_{goal.id}"): goal.progress=progress; goal.status="Completed" if progress==100 else "In progress"; db.commit(); st.rerun()
                     if goal.recommendation: st.caption(goal.recommendation)
         with tabs[4]:
-            student=st.selectbox("Student",students,format_func=lambda s:f"{s.name} · {s.student_id}",key="report_student")
+            selected_student=st.selectbox("Student",students,format_func=lambda s:f"{s.name} · {s.student_id}",key="report_student")
+            student=db.get(Student, selected_student.id)
             result=analyze_student(student)
             st.subheader(student.name)
             st.write(f"**Student ID:** {student.student_id} · **Course:** {student.course or '—'} · **Semester:** {student.semester or '—'}")
