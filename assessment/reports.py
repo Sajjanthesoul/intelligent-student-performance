@@ -30,6 +30,8 @@ def build_student_pdf(student):
     for r in analysis["subjects"]:
         if r["risk"] != "Low":
             story.append(Paragraph(f"<b>{safe(r['subject'])} — {r['risk']} risk:</b> {r['reason']}", styles["Normal"]))
+            if r["topics"]:
+                story.append(Paragraph("<b>Topics to prioritize:</b> " + ", ".join(safe(x) for x in r["topics"]), styles["Normal"]))
             for action in suggested_actions(r): story.append(Paragraph("• " + action, styles["Subtle"]))
     story += [Spacer(1, 4*mm), Paragraph("Teacher feedback", styles["Heading2"])]
     for s in student.subjects:
