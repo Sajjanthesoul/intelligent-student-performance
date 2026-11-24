@@ -6,7 +6,7 @@ import streamlit as st
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from .db import init_db, SessionLocal, Student, Subject, Assessment, Feedback, Goal, IS_PERSISTENT, validate_marks
-from .analytics import analyze_student, suggested_actions
+from .analytics import analyze_student, suggested_actions, suggested_target
 from .reports import build_student_pdf
 
 
@@ -101,7 +101,10 @@ def render_assessment():
                     if save:
                         if not teacher.strip() or not comment.strip(): st.error("Teacher name and feedback are required.")
                         else: sub.teacher_name=teacher.strip(); db.add(Feedback(subject_id=sub.id,teacher_name=teacher.strip(),feedback_date=when,comment=comment.strip())); db.commit(); st.success("Feedback saved."); st.rerun()
-                for f in sorted(sub.feedback,key=lambda x:x.feedback_date,reverse=True): st.info(f"{f.feedback_date} · {f.teacher_name}: {f.comment}")
+                for f in sorted(sub.feedback,key=lambda x:x.feedback_date,reverse=True):
+                    left,right=st.columns([5,1]); left.info(f"{f.feedback_date} · {f.teacher_name}: {f.comment}")
+                    if right.button("Delete",key=f"delete_feedback_{f.id}"):
+                        db.delete(f); db.commit(); st.rerun()
             else: st.info("Add a subject before recording teacher feedback.")
         with tabs[3]:
             student=st.selectbox("Student",students,format_func=lambda s:f"{s.name} · {s.student_id}",key="analysis_student")
@@ -113,6 +116,7 @@ def render_assessment():
                 for r in result["subjects"]:
                     if r["risk"]!="Low":
                         st.warning(f"{r['subject']} · {r['risk']} monitoring: {r['reason']}")
+                        st.write(f"Suggested next-assessment target: **{suggested_target(r):.1f}%**")
                         st.write("Suggested actions: " + " · ".join(suggested_actions(r)))
                 if result["strengths"]: st.success("Current strengths: " + ", ".join(result["strengths"]))
                 if result["weaknesses"]: st.info("Priority subjects: " + ", ".join(result["weaknesses"]))
