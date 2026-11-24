@@ -33,8 +33,8 @@ def test_analysis_is_weighted_and_risk_explained():
     ])
     result = analyze_student(SimpleNamespace(subjects=[subject_a, subject_b]))
     assert result["overall"] == 45.0
-    assert result["subjects"][0]["risk"] == "High"
-    assert "40.0%" in result["subjects"][0]["reason"]
+    assert result["subjects"][1]["risk"] == "High"
+    assert "40.0%" in result["subjects"][1]["reason"]
     assert result["subjects"][0]["trend"] == 0.0
     assert result["weaknesses"] == ["Science", "Mathematics"] or set(result["weaknesses"]) == {"Science", "Mathematics"}
     assert suggested_actions(result["subjects"][0])
@@ -59,3 +59,14 @@ def test_database_persistence_and_cascade_delete(tmp_path):
         session.delete(stored); session.commit()
         assert session.scalar(select(Student).where(Student.id == student_id)) is None
     engine.dispose()
+
+
+def test_pdf_report_is_generated():
+    from assessment.reports import build_student_pdf
+    subject = SimpleNamespace(name="Mathematics", teacher_name="Teacher", assessments=[
+        SimpleNamespace(id=1, assessment_date=date(2026, 3, 1), obtained=72, maximum=100, assessment_type="Midterm")
+    ], feedback=[],)
+    student = SimpleNamespace(name="Sample Learner", student_id="SAMPLE-02", course="Computing", semester="2", academic_details="Anonymized fixture", subjects=[subject], goals=[])
+    payload = build_student_pdf(student)
+    assert payload.startswith(b"%PDF")
+    assert len(payload) > 500
