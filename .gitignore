@@ -8,3 +8,7 @@ __pycache__/
 *.crc
 
 data/raw/studentVle.csv
+# Local StudentIQ assessment database and secrets
+.studentiq/
+.env
+.env.*
