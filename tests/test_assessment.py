@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from assessment.db import Base, Student, Subject, Assessment, validate_marks
-from assessment.analytics import analyze_student, grade_for, suggested_actions
+from assessment.analytics import analyze_student, grade_for, suggested_actions, suggested_target
 
 
 def test_validate_marks_accepts_valid_values():
@@ -38,6 +38,7 @@ def test_analysis_is_weighted_and_risk_explained():
     assert result["subjects"][0]["trend"] == 0.0
     assert result["weaknesses"] == ["Science", "Mathematics"] or set(result["weaknesses"]) == {"Science", "Mathematics"}
     assert suggested_actions(result["subjects"][0])
+    assert suggested_target(result["subjects"][0]) == 65.0
 
 
 def test_database_persistence_and_cascade_delete(tmp_path):
