@@ -118,7 +118,15 @@ def render_assessment():
                     if save:
                         if not teacher.strip() or not comment.strip(): st.error("Teacher name and feedback are required.")
                         else: sub.teacher_name=teacher.strip(); db.add(Feedback(subject_id=sub.id,teacher_name=teacher.strip(),feedback_date=when,comment=comment.strip())); db.commit(); st.success("Feedback saved."); st.rerun()
-                for f in sorted(sub.feedback,key=lambda x:x.feedback_date,reverse=True):
+                # Query feedback by foreign key instead of lazy-loading sub.feedback.
+                # Streamlit widget state can retain ORM instances across reruns, where
+                # the selected Subject may be detached from its original Session.
+                feedback_rows = db.scalars(
+                    select(Feedback)
+                    .where(Feedback.subject_id == sub.id)
+                    .order_by(Feedback.feedback_date.desc(), Feedback.id.desc())
+                ).all()
+                for f in feedback_rows:
                     left,right=st.columns([5,1]); left.info(f"{f.feedback_date} · {f.teacher_name}: {f.comment}")
                     if right.button("Delete",key=f"delete_feedback_{f.id}"):
                         db.delete(f); db.commit(); st.rerun()
