@@ -8,9 +8,25 @@ from sqlalchemy.exc import IntegrityError
 from .db import init_db, SessionLocal, Student, Subject, Assessment, Feedback, Goal, IS_PERSISTENT, validate_marks
 from .analytics import analyze_student, suggested_actions, suggested_target
 from .reports import build_student_pdf
+from .security import configured_password, password_matches
 
 
 def render_assessment():
+    expected_password = configured_password()
+    if not expected_password:
+        st.error("Assessment workspace is locked. Configure ASSESSMENT_ACCESS_PASSWORD in Streamlit secrets before enabling access to student records.")
+        st.stop()
+    if not st.session_state.get("assessment_authenticated", False):
+        with st.form("assessment_access"):
+            candidate = st.text_input("Assessment workspace password", type="password")
+            unlock = st.form_submit_button("Unlock assessment workspace", type="primary")
+            if unlock:
+                if password_matches(candidate, expected_password):
+                    st.session_state["assessment_authenticated"] = True
+                    st.rerun()
+                else:
+                    st.error("Incorrect password.")
+        return
     init_db()
     st.markdown("## Individual Student Assessment")
     st.caption("Manage student records and marks-based support. This module is separate from the OULAD research prediction model.")
