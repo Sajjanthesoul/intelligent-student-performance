@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from assessment.db import Base, Student, Subject, Assessment, validate_marks
 from assessment.analytics import analyze_student, grade_for, suggested_actions, suggested_target
+from assessment.security import password_matches
 
 
 def test_validate_marks_accepts_valid_values():
@@ -71,3 +72,9 @@ def test_pdf_report_is_generated():
     payload = build_student_pdf(student)
     assert payload.startswith(b"%PDF")
     assert len(payload) > 500
+
+
+def test_password_gate_fails_closed():
+    assert password_matches("correct", "correct")
+    assert not password_matches("wrong", "correct")
+    assert not password_matches("anything", "")
